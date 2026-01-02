@@ -1,145 +1,208 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>❤ Love ❤</title>
 <style>
-html,body{
+html, body {
   margin:0; padding:0; width:100%; height:100%;
-  background: radial-gradient(circle at top, #2b0018, #050008);
   overflow:hidden; font-family:"Segoe UI",sans-serif;
+  background:#000;
 }
-canvas{position:absolute; left:0; top:0;}
-#tip{
+canvas { position:absolute; left:0; top:0; z-index:2; }
+#bgImage {
+  position:absolute; left:0; top:0; width:100%; height:100%;
+  object-fit:cover; z-index:1;
+}
+#loveText {
+  position:fixed; top:35%; width:100%; text-align:center;
+  font-size:28px; letter-spacing:1.5px; color:#fff;
+  text-shadow: 0 0 12px #ff80a0, 0 0 20px #ff1493, 0 0 30px #ff69b4;
+  z-index:5;
+}
+#tip {
   position:fixed; bottom:14px; width:100%; text-align:center;
-  color:rgba(255,180,200,.9); font-size:13px; line-height:1.6;
-}
-#loveText{
-  position:fixed; top:45%; width:100%; text-align:center;
-  font-size:24px; letter-spacing:2px; color:#ffd1dc;
-  text-shadow:0 0 14px rgba(255,120,160,1);
+  color:#fff; font-size:14px; line-height:1.6;
+  text-shadow: 0 0 8px #ff80a0, 0 0 12px #ff80a0;
+  z-index:5;
 }
 </style>
 </head>
 <body>
+<img id="bgImage" src="https://raw.githubusercontent.com/c4rl0510/Love-/main/rose.png" alt="玫瑰海背景">
 <canvas id="bg"></canvas>
 <div id="loveText"></div>
-<div id="tip">💗 轻触烟花为你绽放<br>🌹 这一朵玫瑰，只为你摇曳</div>
+<div id="tip">💗 烟花与爱心同在<br>🌹 玫瑰花海只为你摇曳</div>
 
 <script>
 const canvas = document.getElementById('bg');
 const ctx = canvas.getContext('2d');
 const dpr = window.devicePixelRatio || 1;
+
 function resize(){
-  canvas.width = innerWidth * dpr;
-  canvas.height = innerHeight * dpr;
+  canvas.width = innerWidth*dpr;
+  canvas.height = innerHeight*dpr;
   canvas.style.width = innerWidth+'px';
   canvas.style.height = innerHeight+'px';
   ctx.setTransform(dpr,0,0,dpr,0,0);
 }
-resize(); window.addEventListener('resize',()=>location.reload());
+resize();
+window.addEventListener('resize',()=>location.reload());
 
-class Particle{
-  constructor(x,y,vx,vy,r,c){
-    this.x=x; this.y=y; this.vx=vx; this.vy=vy;
-    this.life=1; this.r=r; this.c=c;
+// 星空
+class Star{
+  constructor(){
+    this.x = Math.random()*innerWidth;
+    this.y = Math.random()*innerHeight;
+    this.r = Math.random()*1.5+0.5;
+    this.alpha = Math.random();
+    this.alphaSpeed = Math.random()*0.02+0.005;
   }
-  step(){ this.x+=this.vx; this.y+=this.vy; this.vy+=0.02; this.life-=0.01; }
+  step(){
+    this.alpha += this.alphaSpeed;
+    if(this.alpha>1||this.alpha<0) this.alphaSpeed*=-1;
+  }
   draw(){
-    ctx.globalAlpha=Math.max(this.life,0);
-    ctx.fillStyle=this.c;
-    ctx.beginPath(); ctx.arc(this.x,this.y,this.r,0,Math.PI*2); ctx.fill();
+    ctx.globalAlpha=this.alpha;
+    ctx.fillStyle='#fff';
+    ctx.beginPath();
+    ctx.arc(this.x,this.y,this.r,0,Math.PI*2);
+    ctx.fill();
     ctx.globalAlpha=1;
   }
 }
-let particles=[];
 
-function heart(t){
-  return {
-    x:16*Math.pow(Math.sin(t),3),
-    y:-(13*Math.cos(t)-5*Math.cos(2*t)-2*Math.cos(3*t)-Math.cos(4*t))
-  };
+// 爱心粒子围绕文字
+class Particle{
+  constructor(cx,cy,r,c,angleSpeed=0,radius){
+    this.cx = cx;
+    this.cy = cy;
+    this.r = r;
+    this.c = c;
+    this.angle = Math.random()*Math.PI*2;
+    this.radius = radius || (Math.random()*20+80);
+    this.angleSpeed = angleSpeed;
+  }
+  step(){
+    this.angle += this.angleSpeed;
+    this.x = this.cx + 16*Math.pow(Math.sin(this.angle),3) * this.radius/16;
+    this.y = this.cy - (13*Math.cos(this.angle)-5*Math.cos(2*this.angle)
+           -2*Math.cos(3*this.angle)-Math.cos(4*this.angle)) * this.radius/16;
+  }
+  draw(){
+    ctx.fillStyle=this.c;
+    ctx.beginPath();
+    ctx.arc(this.x,this.y,this.r,0,Math.PI*2);
+    ctx.fill();
+  }
 }
 
-function spawnHeart(){
-  const cx=innerWidth/2, cy=innerHeight/2;
-  for(let i=0;i<140;i++){
-    const t=Math.random()*Math.PI*2, p=heart(t);
-    particles.push(new Particle(
-      cx+p.x*8, cy+p.y*8,
-      (Math.random()-0.5)*0.9, (Math.random()-0.5)*0.9,
-      2, `rgb(255,${100+Math.random()*80},${150+Math.random()*80})`
+// 粉色爱心烟花粒子（淡出）
+class FireworkParticle{
+  constructor(x,y){
+    this.x = x;
+    this.y = y;
+    this.vx = (Math.random()-0.5)*2;
+    this.vy = (Math.random()-0.5)*2;
+    this.r = 2.5;
+    this.alpha = 1;
+    this.decay = 0.02;
+  }
+  step(){
+    this.x += this.vx;
+    this.y += this.vy;
+    this.alpha -= this.decay;
+  }
+  draw(){
+    if(this.alpha<=0) return;
+    ctx.globalAlpha=this.alpha;
+    ctx.fillStyle = `hsl(340,100%,80%)`;
+    ctx.beginPath();
+    ctx.arc(this.x,this.y,this.r,0,Math.PI*2);
+    ctx.fill();
+    ctx.globalAlpha=1;
+  }
+}
+
+let stars = Array.from({length:120},()=>new Star());
+let heartParticles = [];
+let fireworks = [];
+
+// 初始化爱心包围文字
+function spawnHeartCloud(){
+  const cx = innerWidth/2;
+  const cy = innerHeight/2;
+  for(let i=0;i<250;i++){
+    heartParticles.push(new Particle(
+      cx, cy, 2, `rgb(255,${120+Math.random()*80},${150+Math.random()*80})`,
+      0.002+Math.random()*0.002, 100+Math.random()*50
     ));
   }
 }
 
-function firework(x,y){
-  for(let i=0;i<90;i++){
-    const a=Math.random()*Math.PI*2, s=Math.random()*4+1;
-    particles.push(new Particle(x,y,Math.cos(a)*s,Math.sin(a)*s,2.2,
-      `hsl(${Math.random()*360},100%,70%)`));
+// 生成心形烟花
+function fireHeart(x,y){
+  for(let i=0;i<100;i++){
+    const t = Math.random()*Math.PI*2;
+    const p = {x: Math.sin(t)*16, y: - (13*Math.cos(t)-5*Math.cos(2*t)-2*Math.cos(3*t)-Math.cos(4*t))};
+    fireworks.push(new FireworkParticle(
+      x + p.x*5,
+      y + p.y*5
+    ));
   }
 }
 
-// 手绘玫瑰
-function drawRose(x,y,scale,phase){
-  ctx.save();
-  const sway=Math.sin(Date.now()/900+phase)*6;
-  ctx.translate(x,y+sway);
-  ctx.scale(scale,scale);
-
-  ctx.strokeStyle='#2e8b57';
-  ctx.lineWidth=4;
-  ctx.beginPath(); ctx.moveTo(0,30); ctx.lineTo(0,120); ctx.stroke();
-
-  ctx.fillStyle='#3fa76b';
-  ctx.beginPath(); ctx.ellipse(-14,80,18,7,Math.PI/5,0,Math.PI*2); ctx.fill();
-  ctx.beginPath(); ctx.ellipse(16,60,18,7,-Math.PI/5,0,Math.PI*2); ctx.fill();
-
-  for(let i=0;i<12;i++){
-    ctx.save();
-    ctx.rotate(i*Math.PI/6);
-    const g=ctx.createLinearGradient(0,0,22,0);
-    g.addColorStop(0,'#ffe1ea');
-    g.addColorStop(1,'#c4002f');
-    ctx.fillStyle=g;
-    ctx.beginPath(); ctx.ellipse(22,0,18,10,0,0,Math.PI*2); ctx.fill();
-    ctx.restore();
-  }
-  ctx.fillStyle='#ff6f91';
-  ctx.beginPath(); ctx.arc(0,0,10,0,Math.PI*2); ctx.fill();
-  ctx.restore();
+// 自动生成爱心烟花
+function autoFireworks(){
+  const x = Math.random()*innerWidth;
+  const y = Math.random()*innerHeight*0.6;
+  fireHeart(x,y);
 }
+setInterval(autoFireworks,1500);
 
+// 动画循环
 function animate(){
   ctx.clearRect(0,0,innerWidth,innerHeight);
-  drawRose(innerWidth*0.28,innerHeight*0.68,1.1,0);
-  drawRose(innerWidth*0.72,innerHeight*0.65,1.0,1);
-
-  particles.forEach(p=>{p.step(); p.draw();});
-  particles=particles.filter(p=>p.life>0);
+  stars.forEach(s=>{s.step(); s.draw();});
+  heartParticles.forEach(p=>{p.step(); p.draw();});
+  fireworks.forEach(p=>{p.step(); p.draw();});
+  fireworks = fireworks.filter(p=>p.alpha>0);
   requestAnimationFrame(animate);
 }
 
-spawnHeart(); animate();
+spawnHeartCloud();
+animate();
 
-const lines=['遇见你之后，','连风都是温柔的，','而我只想靠近你。','❤'];
-let idx=0; const textBox=document.getElementById('loveText');
-setInterval(()=>{ if(idx<lines.length){ textBox.innerHTML+=lines[idx]+'<br>'; idx++; } },1800);
+// 替换文字
+const lines=[
+  '遇见你之后，',
+  '连风都是温柔的，',
+  '月光也为我们闪耀，',
+  '每一颗星都像你的眼睛，',
+  '而我只想靠近你，',
+  '❤ 爱在心间蔓延 ❤'
+];
+let idx=0;
+const textBox = document.getElementById('loveText');
+setInterval(()=>{
+  if(idx<lines.length){
+    textBox.innerHTML+=lines[idx]+'<br>';
+    idx++;
+  }
+},1800);
 
-// 🎵 GitHub 音乐播放
+// 🎵 GitHub 音乐
 const music = new Audio("https://raw.githubusercontent.com/c4rl0510/Love-/main/music.mp3");
-music.loop = true;
+music.loop=true;
 
-// 点击屏幕同时触发烟花和音乐
+// 点击烟花播放音乐
 function clickHandler(e){
-  firework(e.clientX,e.clientY);
-  music.play().catch(()=>{}); // 捕获微信浏览器限制异常
+  fireHeart(e.clientX,e.clientY);
+  music.play().catch(()=>{});
 }
-
-canvas.addEventListener('click', clickHandler);
-canvas.addEventListener('touchstart', e=>clickHandler(e.touches[0]));
+canvas.addEventListener('click',clickHandler);
+canvas.addEventListener('touchstart',e=>clickHandler(e.touches[0]));
 </script>
 </body>
 </html>
