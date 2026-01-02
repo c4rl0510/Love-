@@ -27,11 +27,6 @@ canvas{position:absolute; left:0; top:0;}
 <div id="loveText"></div>
 <div id="tip">💗 轻触烟花为你绽放<br>🌹 这一朵玫瑰，只为你摇曳</div>
 
-<!-- GitHub 音乐自动播放 -->
-<audio id="music" loop autoplay>
-  <source src="https://raw.githubusercontent.com/c4rl0510/love/main/music.mp3" type="audio/mpeg">
-</audio>
-
 <script>
 const canvas = document.getElementById('bg');
 const ctx = canvas.getContext('2d');
@@ -87,24 +82,21 @@ function firework(x,y){
   }
 }
 
-// 🌹 手绘玫瑰 + 呼吸摇曳
+// 手绘玫瑰
 function drawRose(x,y,scale,phase){
   ctx.save();
   const sway=Math.sin(Date.now()/900+phase)*6;
   ctx.translate(x,y+sway);
   ctx.scale(scale,scale);
 
-  // 茎
   ctx.strokeStyle='#2e8b57';
   ctx.lineWidth=4;
   ctx.beginPath(); ctx.moveTo(0,30); ctx.lineTo(0,120); ctx.stroke();
 
-  // 叶子
   ctx.fillStyle='#3fa76b';
   ctx.beginPath(); ctx.ellipse(-14,80,18,7,Math.PI/5,0,Math.PI*2); ctx.fill();
   ctx.beginPath(); ctx.ellipse(16,60,18,7,-Math.PI/5,0,Math.PI*2); ctx.fill();
 
-  // 花瓣
   for(let i=0;i<12;i++){
     ctx.save();
     ctx.rotate(i*Math.PI/6);
@@ -136,15 +128,18 @@ const lines=['遇见你之后，','连风都是温柔的，','而我只想靠近
 let idx=0; const textBox=document.getElementById('loveText');
 setInterval(()=>{ if(idx<lines.length){ textBox.innerHTML+=lines[idx]+'<br>'; idx++; } },1800);
 
-canvas.addEventListener('click',e=>firework(e.clientX,e.clientY));
-canvas.addEventListener('touchstart',e=>firework(e.touches[0].clientX,e.touches[0].clientY));
+// 🎵 GitHub 音乐播放
+const music = new Audio("https://raw.githubusercontent.com/c4rl0510/Love-/main/music.mp3");
+music.loop = true;
 
-// 微信浏览器自动播放音乐
-document.addEventListener('WeixinJSBridgeReady', function () {
-    var music = document.getElementById('music');
-    music.play();
-}, false);
+// 点击屏幕同时触发烟花和音乐
+function clickHandler(e){
+  firework(e.clientX,e.clientY);
+  music.play().catch(()=>{}); // 捕获微信浏览器限制异常
+}
 
+canvas.addEventListener('click', clickHandler);
+canvas.addEventListener('touchstart', e=>clickHandler(e.touches[0]));
 </script>
 </body>
 </html>
